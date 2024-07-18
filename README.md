@@ -74,6 +74,54 @@ display partially_encrypted.bmp
  - It doesn't have a structure or a pattern related to the origin picture
  - When an image is encrypted using ECB mode, any repetitive patterns in the image will still be visible in the encrypted image. This is because identical blocks of the image data will be encrypted to identical blocks of ciphertext, producing a visually discernible pattern.
 ### 3.  Encryption Mode – Corrupted Cipher Text 
+#### I have created 'plain1.txt' file that 64 bytes long:
+![image](https://github.com/user-attachments/assets/ab7fc7b9-a273-4608-bf55-c87f3113a85e)
+#### To encrypted this file by using ecb, i prepare a key:
+````
+603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4
+````
+- Now encrypted it:
+````
+openssl enc -aes-256-ecb -in plain1.txt -out encrypted_ecb64.bin -K 603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4 -nosalt
+````
+- View encrypted_ecb64.bin:
+![image](https://github.com/user-attachments/assets/9ef396da-4ded-4b22-a575-239628c978d7)
+
+#### Corrupt the 5th byte using the dd command:
+ - First, extract the 5th byte:
+````
+byte=$(dd if=encrypted_ecb64.bin bs=1 skip=4 count=1 2>/dev/null | od -An -t u1)
+````
+  - Next, flip the LSB of the byte (1 to 0)
+````
+flipped_byte=$((byte ^ 1))
+````
+  - Replace the 5th byte in the original file with the flipped byte:
+````
+dd if=encrypted_ecb64.bin bs=1 count=4 of=output.bin 2>/dev/null
+printf \\$(printf '%03o' $flipped_byte) >> output.bin
+dd if=encrypted_ecb64.bin bs=1 skip=5 >> output.bin 2>/dev/null
+````
+ - Now let's see the result in output.bin:
+
+![image](https://github.com/user-attachments/assets/8b3e83b1-20b4-4cc9-938f-070974cc1926)
+
+####  Decrypt the corrupted file (encrypted) using the correct key and IV.
+- ECB:You can recover all the uncorrupted blocks of the file because if a portion of the ECB-encrypted file is corrupted, typically only the corresponding portion of plaintext is affected. Other parts of the file remain intact because ECB encrypts each block independently
+- CBC:You lose the information in the corrupted block and the next block, but you can recover all other blocks because Corruption in a CBC-encrypted file affects not only the corrupted block but also all subsequent plaintext blocks due to the chaining effect (error propagation).
+- CFB:You lose the information in the corrupted block and a few bytes after it, but the rest of the file can be decrypted correctly because corruption affects the synchronization between the cipher and plaintext blocks. If a bit in the ciphertext is corrupted, it can lead to incorrect decryption for subsequent blocks until synchronization is restored.
+- OFB:You can recover all the uncorrupted blocks of the file because OFB mode typically affects the bits in the affected block and can cause incorrect decryption for that block and subsequent blocks until the next synchronization point.
+
+
+
+
+
+
+
+    
+
+
+
 
 
 
